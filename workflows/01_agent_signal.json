@@ -1,0 +1,876 @@
+{
+  "name": "Résonance · Agent 1 · Signal",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Agent 1 · Signal\nChaque jour à 6 h : lit les flux RSS et les emails du libellé Gmail « veille » (newsletters, alertes Sales Navigator), fait extraire par Gemini la maison, le type de signal, la date et un **extrait justificatif mot pour mot** (moins de 30 mots). Rejette tout signal sans URL ni date, et les levées de fonds, sponsoring sportif et croissance d'équipe.\n\nCrée l'affaire au statut **« À rechercher »** avec sa source, ou complète l'affaire ouverte de la maison. Même maison et même URL : ignoré.\n\n**Validation humaine** : sources et critères validés au lancement, revus chaque mois.",
+        "height": 320,
+        "width": 560
+      },
+      "id": "44e2a0c9-1067-4035-9305-a776303fffa1",
+      "name": "Mode d'emploi",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "id": "668f7195-51e1-4e26-8b12-f126b414106a",
+      "name": "Chaque jour à 6 h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        32,
+        432
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "7c0875a0-22bc-4799-996d-4d86c5bbe1e6",
+      "name": "Lancer maintenant (test)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        32,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============ CONFIG RÉSONANCE — à remplir, identique dans les 7 workflows d'agents ============\nreturn [{ json: {\n  pipeline: \"Prospection Résonance\",          // nom exact du pipeline Pipedrive\n  gemini_model: \"gemini-flash-latest, gemini-flash-lite-latest\", // un ou plusieurs modèles Google AI Studio, séparés par des virgules (répartition de la charge)\n  pipedrive_base: \"https://api.pipedrive.com/v1\",\n  gemini_base: \"https://generativelanguage.googleapis.com/v1beta\",\n  gmail_base: \"https://gmail.googleapis.com/gmail/v1/users/me\",\n  signataire: \"Prénom Nom\",                    // personne qui signe les emails\n  emails_fondatrices: \"\",                      // adresses qui reçoivent alertes, arbitrage du lundi et export (séparées par des virgules ; vide = la boîte connectée)\n  lien_rdv: \"COLLER_ICI_LE_LIEN_DE_PRISE_DE_RENDEZ-VOUS\",\n  plafond_hebdo: 35,                           // premiers messages par semaine au maximum\n  // Veille (agent 1)\n  flux_rss: [ \"COLLER_ICI_UNE_URL_DE_FLUX_RSS\" ], // par exemple des flux Google Alertes\n  label_veille: \"veille\",                      // libellé Gmail des newsletters et alertes à analyser\n  fenetre_heures: 48,                          // âge maximal d'un article RSS\n  max_articles: 25,\n  // Bibliothèque de preuves validée par les fondatrices.\n  // origine « À valider » = bloque le brouillon ; une phrase entre crochets est aussi bloquée par le contrôle automatique.\n  preuves: [\n    { id: \"vins\", segment: \"Vins & Spiritueux\", origine: \"Projet Anna & Louise\", phrase: \"[Phrase de preuve validée : projet réalisé pour une maison de ce segment]\" },\n    { id: \"beaute\", segment: \"Beauté & Parfumerie\", origine: \"Projet Anna & Louise\", phrase: \"[Phrase de preuve validée : projet réalisé pour une maison de ce segment]\" },\n    { id: \"joaillerie\", segment: \"Joaillerie & Horlogerie\", origine: \"Expérience des fondatrices (autre structure)\", phrase: \"[Phrase de preuve validée : expérience antérieure des fondatrices]\" },\n    { id: \"mode\", segment: \"Mode & Maroquinerie\", origine: \"À valider\", phrase: \"[Phrase de preuve en attente de validation]\" }\n  ],\n  // Emails des fondatrices ou de l'agence ayant obtenu une réponse (modèles de style de l'agent 4)\n  exemples_valides: []\n}}];\n"
+      },
+      "id": "1ae47f29-8a41-4cb5-8aa2-2a64b5f03cd8",
+      "name": "CONFIG",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { texte: \"Tu es l'agent 1 · Signal de Résonance, l'outil de prospection d'Anna & Louise, maison créative parisienne (stratégie de marque, direction créative, image, IA générative) dédiée au luxe et au premium.\\n\\nTu reçois UN article ou UN email de veille. Tu repères une actualité qui révèle un besoin probable en stratégie de marque, direction créative, image ou IA générative. Tu travailles UNIQUEMENT à partir du texte fourni.\\n\\nTypes de signal (du plus au moins prioritaire) :\\n- \\\"Plateforme de marque / repositionnement / identité\\\"\\n- \\\"Lancement ou campagne à venir\\\"\\n- \\\"Nomination d'un décideur\\\" (Marketing, Image, Brand, Digital)\\n- \\\"Accélération IA / contenus\\\"\\n- \\\"Ouverture ou rénovation de lieu\\\"\\n- \\\"Appel d'offres\\\" (recherche d'expertise, prescripteurs)\\n- \\\"Autre signal\\\" (campagne déjà publiée, acquisition, résultats, recrutement marketing : contexte utile, rarement déclencheur)\\nNe retiens PAS : levées de fonds, sponsoring sportif, croissance générale des équipes.\\n\\nretenu = true seulement si : maison de luxe, marque premium, hospitality haut de gamme ou prescripteur ; type ci-dessus hors « Autre signal » ; URL et date de publication identifiables.\\n\\n\\\"extrait\\\" = une phrase COPIÉE MOT POUR MOT du texte (moins de 30 mots) qui prouve le signal.\\n\\nRéponds uniquement avec ce JSON :\\n{\\\"retenu\\\": true, \\\"maison\\\": \\\"\\\", \\\"groupe\\\": \\\"\\\", \\\"categorie\\\": \\\"Beauté & Parfumerie | Joaillerie & Horlogerie | Mode & Maroquinerie | Vins & Spiritueux | Hospitality & Lifestyle | Lifestyle premium | Prescripteurs\\\", \\\"type_signal\\\": \\\"\\\", \\\"priorite\\\": \\\"Haute | Moyenne | Basse\\\", \\\"personnes\\\": [{\\\"nom\\\": \\\"\\\", \\\"poste\\\": \\\"\\\"}], \\\"resume\\\": \\\"une phrase factuelle\\\", \\\"extrait\\\": \\\"citation exacte de moins de 30 mots\\\", \\\"date_publication\\\": \\\"AAAA-MM-JJ\\\", \\\"url\\\": \\\"\\\", \\\"source\\\": \\\"\\\"}\" } }];"
+      },
+      "id": "dd201ac4-b4cf-4cb1-af9a-fc7e05a225ed",
+      "name": "PROMPT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('CONFIG').first().json.pipedrive_base }}/dealFields?limit=500",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "options": {}
+      },
+      "id": "ac07da25-0020-4c4a-8734-67ddbaa1a1da",
+      "name": "Champs affaires",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        688,
+        432
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $('CONFIG').first().json.pipedrive_base }}/personFields?limit=500",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "options": {}
+      },
+      "id": "dc0d923c-b0e1-4a95-b79a-c51f13e375b1",
+      "name": "Champs personnes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        912,
+        432
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $('CONFIG').first().json.pipedrive_base }}/stages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "options": {}
+      },
+      "id": "eaad063d-9c3a-4c7f-8751-0bdddc950dd2",
+      "name": "Étapes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        432
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Carte des champs et étapes Pipedrive, retrouvés par leur NOM exact\nconst cfg = $('CONFIG').first().json;\nconst n = s => String(s || '').trim();\nconst dealF = $('Champs affaires').first().json.data || [];\nconst persF = $('Champs personnes').first().json.data || [];\nconst stages = ($('Étapes').first().json.data || []).filter(s => n(s.pipeline_name) === cfg.pipeline);\nconst perso = f => /^[0-9a-f]{40}$/.test(f.key);   // champ personnalisé (prioritaire sur un champ système du même nom)\nconst map = arr => Object.fromEntries([...arr.filter(f => !perso(f)), ...arr.filter(perso)].map(f => [n(f.name), f.key]));\nconst deal = map(dealF), person = map(persF);\nconst stage = Object.fromEntries(stages.map(s => [n(s.name), s.id]));\n\nconst requis = {\n  deal: ['Type de signal','URL source','Date de publication','Extrait source','Résumé du signal','Catégorie','Taille budget',\"Porte d'entrée\",'Adéquation expertises','Fait vérifié','Hypothèse','Preuve A&L','Score Résonance','Détail du score','Motif du score','Niveau','Angle','Prochaine action','Activer','Discrétion IA','Brouillon généré','Texte du dernier message','Date premier envoi','Nb relances','Tâche LinkedIn','Reprise le','Date de réactivation','Motif de refus','Fin de conservation'],\n  person: ['Civilité','Poste','Niveau de décision','Opposition','Provenance coordonnées','Fiabilité email'],\n  stage: ['À rechercher','À qualifier','Prêt à contacter','Contacté','À relancer','Conversation ouverte','Rendez-vous','En pause']\n};\nconst manquants = [\n  ...requis.deal.filter(x => !deal[x]).map(x => 'champ affaire « ' + x + ' »'),\n  ...requis.person.filter(x => !person[x]).map(x => 'champ personne « ' + x + ' »'),\n  ...requis.stage.filter(x => !stage[x]).map(x => 'étape « ' + x + ' » du pipeline « ' + cfg.pipeline + ' »')\n];\nif (manquants.length) throw new Error('À créer dans Pipedrive (noms exacts) : ' + manquants.join(', '));\nreturn [{ json: { deal, person, stage, pipeline_id: stages[0].pipeline_id } }];"
+      },
+      "id": "b2e0b6a2-86d3-440b-805a-037f950c388f",
+      "name": "Carte Pipedrive",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        432
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('CONFIG').first().json;\nreturn cfg.flux_rss.filter(u => /^https?:\\/\\//.test(u)).map(url => ({ json: { url } }));"
+      },
+      "id": "69aac470-cf3f-4d68-a47f-2e8784fcfa97",
+      "name": "Liste des flux",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "id": "f19c4366-1eb6-48f1-a810-4b4b39c79a70",
+      "name": "Lire flux RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        1792,
+        288
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('CONFIG').first().json;\nconst limite = Date.now() - cfg.fenetre_heures * 3600e3; const out = [];\n$input.all().forEach((it, i) => { const j = it.json; if (j.error || !(j.link || j.title)) return;\n  const d = new Date(j.isoDate || j.pubDate || Date.now()); if (d.getTime() < limite) return;\n  out.push({ json: { titre: j.title || '', lien: j.link || '', date: d.toISOString().slice(0, 10), texte: String(j.contentSnippet || j.content || '').slice(0, 6000) }, pairedItem: { item: i } }); });\nreturn out;"
+      },
+      "id": "3408d87f-b8cf-4381-ba05-a9e88a7782b9",
+      "name": "Normaliser RSS",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('CONFIG').first().json.gmail_base }}/messages?q={{ encodeURIComponent('label:' + $('CONFIG').first().json.label_veille + ' newer_than:2d') }}&maxResults=20",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "gmailOAuth2",
+        "options": {}
+      },
+      "id": "7066a622-1881-4426-98a6-b467477491e5",
+      "name": "Emails de veille",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1568,
+        560
+      ],
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return ($input.first().json.messages || []).map(m => ({ json: { id: m.id }, pairedItem: { item: 0 } }));"
+      },
+      "id": "c5fbc4cb-f1a9-4e11-a508-15c4faa64108",
+      "name": "Messages de veille",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('CONFIG').first().json.gmail_base }}/messages/{{ $json.id }}?format=full",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "gmailOAuth2",
+        "options": {}
+      },
+      "id": "06a84b6d-9306-45c9-8344-a2c2642a5425",
+      "name": "Lire email de veille",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2000,
+        560
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nconst dec = d => Buffer.from(String(d).replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');\nfunction corps(p) { if (!p) return ''; if (p.mimeType === 'text/plain' && p.body?.data) return dec(p.body.data); let html = '';\n  for (const q of (p.parts || [])) { const t = corps(q); if (t && q.mimeType === 'text/plain') return t; if (t) html = html || t; }\n  if (p.mimeType === 'text/html' && p.body?.data) html = dec(p.body.data).replace(/<a [^>]*href=\"([^\"]+)\"[^>]*>/gi, ' $1 ').replace(/<[^>]+>/g, ' '); return html; }\n$input.all().forEach((it, i) => { const m = it.json; if (!m.payload) return;\n  const h = Object.fromEntries((m.payload.headers || []).map(x => [x.name.toLowerCase(), x.value]));\n  out.push({ json: { titre: h.subject || '', lien: '', date: new Date(Number(m.internalDate) || Date.now()).toISOString().slice(0, 10), texte: corps(m.payload).replace(/\\s+/g, ' ').slice(0, 8000) }, pairedItem: { item: i } }); });\nreturn out;"
+      },
+      "id": "5b468a70-4c0a-42ba-81e8-80e545a7b257",
+      "name": "Normaliser email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2224,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('CONFIG').first().json; const st = $getWorkflowStaticData('global'); st.vus = st.vus || {}; const out = [];\n$input.all().forEach((it, i) => { const cle = (it.json.lien || it.json.titre || '').toLowerCase().trim(); if (!cle || st.vus[cle]) return; st.vus[cle] = Date.now(); out.push({ json: it.json, pairedItem: { item: i } }); });\nfor (const [k, t] of Object.entries(st.vus)) if (Date.now() - t > 30 * 864e5) delete st.vus[k];\nreturn out.slice(0, cfg.max_articles);"
+      },
+      "id": "3684ec13-caf6-4b23-a4fc-e2ebfa4bdc3a",
+      "name": "Dédoublonner",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2448,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "method": "=POST",
+        "url": "={{ $('CONFIG').first().json.gemini_base }}/models/{{ (m => m[Math.floor(Math.random() * m.length)])(String($('CONFIG').first().json.gemini_model).split(',').map(s => s.trim()).filter(Boolean)) }}:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ systemInstruction: { parts: [{ text: $('PROMPT').first().json.texte }] }, contents: [{ role: 'user', parts: [{ text: 'Titre : ' + $json.titre + '\\nDate : ' + $json.date + '\\nLien : ' + $json.lien + '\\n\\nTexte :\\n' + $json.texte }] }], generationConfig: { temperature: 0, responseMimeType: 'application/json' } }) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 4000
+            }
+          }
+        }
+      },
+      "id": "540384aa-013d-457a-8f82-44b149629b66",
+      "name": "Gemini · extraire le signal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2672,
+        432
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const norm = s => String(s ?? '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\nconst gem = j => { try { return JSON.parse(j.candidates?.[0]?.content?.parts?.[0]?.text); } catch (e) { return null; } };\n\nconst TYPES = ['Plateforme de marque / repositionnement / identité', 'Lancement ou campagne à venir', \"Nomination d'un décideur\", 'Accélération IA / contenus', 'Ouverture ou rénovation de lieu', \"Appel d'offres\"];\nconst typeDe = t => TYPES.find(x => norm(x).replace(/[’']/g, \"'\") === norm(t).replace(/[’']/g, \"'\")) || null;\nconst out = []; const vus = {}; const rejets = [];\n$input.all().forEach((it, i) => { const r = gem(it.json);\n  if (!r) { rejets.push('réponse Gemini illisible ou erreur : ' + JSON.stringify(it.json).slice(0, 150)); return; }\n  if (!r.retenu) { rejets.push(r.maison + ' : non retenu par Gemini'); return; }\n  let src = {}; try { src = $('Dédoublonner').itemMatching(i).json || {}; } catch (e) { src = $('Dédoublonner').all()[i]?.json || {}; }\n  r.type_signal = typeDe(r.type_signal); if (!r.type_signal) { rejets.push(r.maison + ' : type de signal hors liste'); return; }\n  if (!/^https?:\\/\\//.test(r.url || '')) r.url = src.lien || (String(src.texte || '').match(/https?:\\/\\/[^\\s<>\"]+/) || [''])[0];\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(r.date_publication || '')) r.date_publication = src.date || '';\n  if (!/^https?:\\/\\//.test(r.url)) { rejets.push(r.maison + ' : aucune URL dans le texte'); return; }\n  if (!r.date_publication || !r.maison || !r.extrait) { rejets.push(r.maison + ' : date, maison ou extrait manquant'); return; }\n  const cle = norm(r.maison) + '|' + r.type_signal; if (vus[cle]) return; vus[cle] = 1;\n  out.push({ json: r, pairedItem: { item: i } }); });\nif (!out.length && rejets.length && $execution.mode !== 'production') throw new Error('Signaux rejetés : ' + rejets.join(' | '));\nreturn out;"
+      },
+      "id": "01cc4e23-abe9-4b72-b767-303f84ef8aa9",
+      "name": "Analyser",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('CONFIG').first().json.pipedrive_base }}/organizations/search?term={{ encodeURIComponent($json.maison) }}&fields=name&exact_match=true",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "options": {}
+      },
+      "id": "2152c04b-9457-454a-9c3d-880285694a70",
+      "name": "Chercher organisation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3104,
+        432
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((it, i) => ({ json: { ...$('Analyser').itemMatching(i).json, org_id: it.json.data?.items?.[0]?.item?.id || null }, pairedItem: { item: i } }));"
+      },
+      "id": "3c118ebf-2796-4351-aa3d-84c2b9a5993a",
+      "name": "Décider",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3328,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((it, i) => ({ json: it.json, pairedItem: { item: i } })).filter(x => x.json.org_id);"
+      },
+      "id": "c3006b5d-7e96-4ed7-8818-e1ddf6b1030e",
+      "name": "Organisation trouvée",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3552,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((it, i) => ({ json: it.json, pairedItem: { item: i } })).filter(x => !x.json.org_id);"
+      },
+      "id": "04faad6b-2ecc-4989-bb45-f180626846f0",
+      "name": "Organisation absente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3552,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CONFIG').first().json.pipedrive_base }}/organizations",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: $json.maison }) }}",
+        "options": {}
+      },
+      "id": "225cd586-774d-41ab-9f20-f8c2cb5dce07",
+      "name": "Créer organisation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3760,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { json: { ...$('Organisation absente').item.json, org_id: $json.data.id } };"
+      },
+      "id": "71efb9a5-9ec4-40e6-906a-378207ea7986",
+      "name": "Après création",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3984,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { json: $json };"
+      },
+      "id": "7f2d9428-570a-4185-81c7-d004caff0bc0",
+      "name": "Signal et organisation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4208,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('CONFIG').first().json.pipedrive_base }}/organizations/{{ $json.org_id }}/deals?status=open&limit=100",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "options": {}
+      },
+      "id": "8c08d372-12d4-4f96-a5d6-54ce34dccff5",
+      "name": "Affaires de l'organisation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4432,
+        432
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\nconst norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\nconst val = (obj, key) => { const v = obj ? obj[key] : undefined; return (v && typeof v === 'object' && 'value' in v) ? v.value : v; };\nconst today = () => new Date().toISOString().slice(0, 10);\nconst esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');\nconst pdDate = s => s ? new Date(String(s).replace(' ', 'T') + (String(s).includes('Z') || String(s).length <= 10 ? '' : 'Z')) : null;\nconst ouvres = (from, to = new Date()) => { if (!from) return 0; let n = 0; const d = new Date(from); d.setUTCHours(12, 0, 0, 0); const e = new Date(to); while (true) { d.setUTCDate(d.getUTCDate() + 1); if (d > e) break; const w = d.getUTCDay(); if (w !== 0 && w !== 6) n++; } return n; };\nconst plusOuvres = (from, k) => { const d = new Date(from); let n = 0; while (n < k) { d.setUTCDate(d.getUTCDate() + 1); const w = d.getUTCDay(); if (w !== 0 && w !== 6) n++; } return d.toISOString().slice(0, 10); };\nconst plusMois = m => { const d = new Date(); d.setMonth(d.getMonth() + m); return d.toISOString().slice(0, 10); };\nconst fonctionDe = poste => { const p = norm(poste); if (/image|artisti|creati/.test(p)) return 'Image'; if (/brand|marque/.test(p)) return 'Brand'; if (/digital|innovation|numerique/.test(p)) return 'Digital'; if (/communication|comms|presse|pr /.test(p + ' ')) return 'Communication'; if (/marketing|cmo|managing director|directeur general|directrice generale|general manager/.test(p)) return 'Marketing'; return 'Autre'; };\nconst ANGLES = { Image: 'Cohérence des codes, qualité de la direction créative', Marketing: \"Impact business d'une campagne, rythme de production\", Brand: 'Plateforme de marque, repositionnement', Digital: 'IA générative maîtrisée au service du désir', Communication: 'Éditorial, prises de parole, activations' };\nconst TONS = { 'mode & maroquinerie': \"élégant, tourné vers l'image et le savoir-faire\", 'joaillerie & horlogerie': 'raffiné, précis, patrimoine et exception', 'beaute & parfumerie': 'sensoriel, moderne', 'vins & spiritueux': 'chaleureux, art de recevoir', 'hospitality & lifestyle': 'chaleureux, art de recevoir', 'lifestyle premium': 'élégant et sobre', 'prescripteurs': 'direct et confraternel, toujours au vouvoiement' };\nconst gem = j => { try { return JSON.parse(j.candidates?.[0]?.content?.parts?.[0]?.text); } catch (e) { return null; } };\nconst b64url = s => Buffer.from(s).toString('base64').replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');\nconst mime = (to, sujet, corps, extra = []) => b64url([...(to ? ['To: ' + to] : []), ...extra, 'Subject: =?UTF-8?B?' + Buffer.from(sujet).toString('base64') + '?=', 'MIME-Version: 1.0', 'Content-Type: text/plain; charset=\"UTF-8\"', 'Content-Transfer-Encoding: base64', '', Buffer.from(corps).toString('base64')].join('\\r\\n'));\n\nconst carte = $('Carte Pipedrive').first().json; const K = carte.deal;\nconst s = $('Signal et organisation').item.json;\nconst existantes = ($json.data || []).filter(d => d.pipeline_id === carte.pipeline_id && d.status === 'open');\nconst deja = existantes.find(d => val(d, K['URL source']) === s.url);\nconst personnes = (s.personnes || []).filter(p => p.nom).map(p => p.nom + (p.poste ? ' (' + p.poste + ')' : '')).join(', ');\nconst note_html = ['<b>Signal Résonance</b> (agent 1)', 'Type de signal: ' + esc(s.type_signal), 'Priorité: ' + esc(s.priorite), 'URL source: ' + esc(s.url), 'Date de publication: ' + esc(s.date_publication), 'Catégorie: ' + esc(s.categorie), 'Résumé: ' + esc(s.resume), 'Extrait: « ' + esc(s.extrait) + ' »', 'Personnes citées: ' + esc(personnes || '—'), 'Source: ' + esc(s.source), 'Date de collecte: ' + today()].join('<br>');\nconst body = { title: s.maison + ' · ' + s.type_signal, org_id: s.org_id, pipeline_id: carte.pipeline_id, stage_id: carte.stage['À rechercher'],\n  [K['Type de signal']]: s.type_signal, [K['URL source']]: s.url, [K['Date de publication']]: s.date_publication, [K['Extrait source']]: s.extrait, [K['Résumé du signal']]: s.resume, [K['Catégorie']]: s.categorie };\nreturn { json: { mode: deja ? 'ignorer' : (existantes.length ? 'completer' : 'creer'), deal_id: existantes[0]?.id || null, body, note_html } };"
+      },
+      "id": "d592441b-295d-4175-9eb1-cb1719c28d58",
+      "name": "Préparer signal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4640,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((it, i) => ({ json: it.json, pairedItem: { item: i } })).filter(x => x.json.mode === 'creer');"
+      },
+      "id": "e33771ef-095d-4647-93ad-76eea5561436",
+      "name": "Nouvelles affaires",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4864,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((it, i) => ({ json: it.json, pairedItem: { item: i } })).filter(x => x.json.mode === 'completer');"
+      },
+      "id": "bec92524-0a4a-443b-8c18-f722141d1747",
+      "name": "Affaires à compléter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4864,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CONFIG').first().json.pipedrive_base }}/deals",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {}
+      },
+      "id": "7ed24b67-190f-478c-9126-55b092d7a50e",
+      "name": "Créer affaire « À rechercher »",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5088,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CONFIG').first().json.pipedrive_base }}/notes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $('Nouvelles affaires').item.json.note_html, deal_id: $json.data.id }) }}",
+        "options": {}
+      },
+      "id": "c45a3126-c2f8-4d70-afb1-cf9b874df16e",
+      "name": "Note du signal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5312,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CONFIG').first().json.pipedrive_base }}/notes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $json.note_html, deal_id: $json.deal_id }) }}",
+        "options": {}
+      },
+      "id": "f91bc49e-d5fb-48ed-ba46-01853e78212e",
+      "name": "Note sur l'affaire existante",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5088,
+        560
+      ]
+    }
+  ],
+  "connections": {
+    "Chaque jour à 6 h": {
+      "main": [
+        [
+          {
+            "node": "CONFIG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lancer maintenant (test)": {
+      "main": [
+        [
+          {
+            "node": "CONFIG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PROMPT": {
+      "main": [
+        [
+          {
+            "node": "Champs affaires",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Champs affaires": {
+      "main": [
+        [
+          {
+            "node": "Champs personnes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Champs personnes": {
+      "main": [
+        [
+          {
+            "node": "Étapes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Étapes": {
+      "main": [
+        [
+          {
+            "node": "Carte Pipedrive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CONFIG": {
+      "main": [
+        [
+          {
+            "node": "PROMPT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carte Pipedrive": {
+      "main": [
+        [
+          {
+            "node": "Liste des flux",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Emails de veille",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Liste des flux": {
+      "main": [
+        [
+          {
+            "node": "Lire flux RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lire flux RSS": {
+      "main": [
+        [
+          {
+            "node": "Normaliser RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normaliser RSS": {
+      "main": [
+        [
+          {
+            "node": "Dédoublonner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Emails de veille": {
+      "main": [
+        [
+          {
+            "node": "Messages de veille",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Messages de veille": {
+      "main": [
+        [
+          {
+            "node": "Lire email de veille",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lire email de veille": {
+      "main": [
+        [
+          {
+            "node": "Normaliser email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normaliser email": {
+      "main": [
+        [
+          {
+            "node": "Dédoublonner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dédoublonner": {
+      "main": [
+        [
+          {
+            "node": "Gemini · extraire le signal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini · extraire le signal": {
+      "main": [
+        [
+          {
+            "node": "Analyser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyser": {
+      "main": [
+        [
+          {
+            "node": "Chercher organisation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chercher organisation": {
+      "main": [
+        [
+          {
+            "node": "Décider",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Décider": {
+      "main": [
+        [
+          {
+            "node": "Organisation trouvée",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Organisation absente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Organisation absente": {
+      "main": [
+        [
+          {
+            "node": "Créer organisation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Créer organisation": {
+      "main": [
+        [
+          {
+            "node": "Après création",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Après création": {
+      "main": [
+        [
+          {
+            "node": "Signal et organisation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Organisation trouvée": {
+      "main": [
+        [
+          {
+            "node": "Signal et organisation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Signal et organisation": {
+      "main": [
+        [
+          {
+            "node": "Affaires de l'organisation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Affaires de l'organisation": {
+      "main": [
+        [
+          {
+            "node": "Préparer signal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer signal": {
+      "main": [
+        [
+          {
+            "node": "Nouvelles affaires",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Affaires à compléter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nouvelles affaires": {
+      "main": [
+        [
+          {
+            "node": "Créer affaire « À rechercher »",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Créer affaire « À rechercher »": {
+      "main": [
+        [
+          {
+            "node": "Note du signal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Affaires à compléter": {
+      "main": [
+        [
+          {
+            "node": "Note sur l'affaire existante",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": null
+}
